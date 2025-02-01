@@ -1,5 +1,6 @@
 import 'package:expressions/expressions.dart';
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 class Calculadora extends StatefulWidget {
   const Calculadora({super.key});
@@ -9,13 +10,13 @@ class Calculadora extends StatefulWidget {
 }
 
 class _CalculadoraState extends State<Calculadora> {
-  final String _limpar = 'Limpar';
+  final String _C = 'Limpar';
   String _expressao = '';
   String _resultado = '';
 
   void _pressionarBotao(String valor) {
     setState(() {
-      if (valor == _limpar) {
+      if (valor == _C) {
         _expressao = '';
         _resultado = '';
       } else if (valor == '=') {
@@ -30,16 +31,65 @@ class _CalculadoraState extends State<Calculadora> {
     try {
       _resultado = _avaliarExpressao(_expressao).toString();
     } catch (e) {
-      _resultado = 'erro';
+      _resultado = 'Erro';
     }
   }
 
-  double _avaliarExpressao(String expressao) {
+  num _avaliarExpressao(String expressao) {
     expressao = expressao.replaceAll('x', '*');
     expressao = expressao.replaceAll('÷', '/');
+
+    // Usando expressão regular para identificar o fatorial
+    RegExp fatorialRegEx = RegExp(r'(\d+)!');
+
+    // Substituir todos os fatoriais na expressão
+    expressao = expressao.replaceAllMapped(fatorialRegEx, (match) {
+      int numero = int.parse(match.group(1)!);
+      return _fatorial(numero).toString();
+    });
+
+    // Novos códigos, definidos em aula presencial
+    if (expressao.contains('√')) {
+      debugPrint(expressao);
+      return sqrt(_avaliarExpressao(expressao.replaceAll('√', '')));
+    } else if (expressao.contains('X²')) {
+      return pow(_avaliarExpressao(expressao.replaceAll('^2', '')), 2);
+    
+    } else if (expressao.contains('%')) {
+      // Encontrar o operador que precede o símbolo de porcentagem
+      int indexPorcentagem = expressao.indexOf('%');
+      int indexOperador = -1;
+      for (int i = indexPorcentagem - 1; i >= 0; i--) {
+        if (['+', '-', '*', '/'].contains(expressao[i])) {
+          indexOperador = i;
+          break;
+        }
+      }
+
+      if (indexOperador != -1) {
+        // Extrair o número antes da porcentagem
+        num numeroAntesPorcentagem =
+            _avaliarExpressao(expressao.substring(0, indexOperador).trim());
+        // Calcular a porcentagem
+        double porcentagem = numeroAntesPorcentagem *
+            (_avaliarExpressao(expressao
+                    .substring(indexOperador + 1, indexPorcentagem)
+                    .trim()) /
+                100);
+        return _avaliarExpressao(
+            expressao.substring(0, indexOperador + 1).trim() +
+                porcentagem.toString());
+      }
+    }
     ExpressionEvaluator avaliador = const ExpressionEvaluator();
-    double resultado = avaliador.eval(Expression.parse(expressao), {});
+    double resultado =
+        avaliador.eval(Expression.parse(expressao), {}) as double;
     return resultado;
+  }
+
+  int _fatorial(int n) {
+    if (n <= 1) return 1;
+    return n * _fatorial(n - 1);
   }
 
   Widget _botao(String valor) {
@@ -57,7 +107,6 @@ class _CalculadoraState extends State<Calculadora> {
     return Column(
       children: [
         Expanded(
-          flex: 2,
           child: Text(
             _expressao,
             style: const TextStyle(fontSize: 24),
@@ -66,7 +115,7 @@ class _CalculadoraState extends State<Calculadora> {
         Expanded(
           child: Text(
             _resultado,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w100),
+            style: const TextStyle(fontSize: 24),
           ),
         ),
         Expanded(
@@ -75,6 +124,10 @@ class _CalculadoraState extends State<Calculadora> {
             crossAxisCount: 4,
             childAspectRatio: 2,
             children: [
+              _botao('!'),
+              _botao('%'),
+              _botao('√'),
+              _botao('x²'),
               _botao('7'),
               _botao('8'),
               _botao('9'),
@@ -95,8 +148,8 @@ class _CalculadoraState extends State<Calculadora> {
           ),
         ),
         Expanded(
-          child: _botao(_limpar),
-        )
+          child: _botao(_C),
+        ),
       ],
     );
   }
